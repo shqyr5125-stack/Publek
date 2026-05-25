@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>حمصي للاتصالات</title>
+
+<style>
+  body {margin:0;font-family:"Cairo",sans-serif;background:#f8f8f8;}
+  header {background:#e74c3c;color:white;text-align:center;padding:15px;font-size:28px;font-weight:bold;cursor:pointer;}
+  nav {display:flex;justify-content:space-around;background:#fff;box-shadow:0 2px 5px rgba(0,0,0,0.1);}
+  nav a {padding:10px;text-decoration:none;color:#e74c3c;font-weight:bold;}
+  .grid {display:grid;grid-template-columns:repeat(2,1fr);gap:20px;padding:20px;}
+  .card,.brand,.device {
+    background:white;border-radius:20px;box-shadow:0 2px 8px rgba(0,0,0,0.1);
+    text-align:center;cursor:pointer;transition:0.3s;padding:25px;font-size:20px;font-weight:bold;color:#e74c3c;
+  }
+  .card:hover,.brand:hover,.device:hover {background:#e74c3c;color:white;transform:scale(1.05);}
+  .section {display:none;padding:20px;}
+  .section.active {display:block;}
+  #details h2 {color:#e74c3c;}
+  #adminPanel {display:none;text-align:center;padding:20px;}
+  input[type=password], input[type=text] {padding:10px;margin:10px;width:80%;border:1px solid #ccc;border-radius:10px;}
+  button {background:#e74c3c;color:white;border:none;padding:10px 20px;border-radius:10px;cursor:pointer;}
+</style>
+</head>
+<body>
+
+<header id="siteTitle">حمصي للاتصالات</header>
+
+<nav>
+  <a href="#" onclick="showSection('tools')">الأدوات</a>
+  <a href="#" onclick="showSection('brands')">الماركات</a>
+</nav>
+
+<!-- الأدوات -->
+<div id="tools" class="section active">
+  <div class="grid">
+    <div class="card" onclick="selectTool('screen')">📱 شاشة</div>
+    <div class="card" onclick="selectTool('battery')">🔋 بطارية</div>
+    <div class="card" onclick="selectTool('board')">💻 لوحة أم</div>
+    <div class="card" onclick="selectTool('ic')">⚡ IC شريحة</div>
+  </div>
+</div>
+
+<!-- الماركات -->
+<div id="brands" class="section">
+  <div class="grid">
+    <div class="brand" onclick="selectBrand('samsung')">Samsung</div>
+    <div class="brand" onclick="selectBrand('apple')">Apple</div>
+    <div class="brand" onclick="selectBrand('huawei')">Huawei</div>
+    <div class="brand" onclick="selectBrand('xiaomi')">Xiaomi</div>
+    <div class="brand" onclick="selectBrand('oppo')">Oppo</div>
+    <div class="brand" onclick="selectBrand('vivo')">Vivo</div>
+    <div class="brand" onclick="selectBrand('realme')">Realme</div>
+    <div class="brand" onclick="selectBrand('tecno')">Tecno</div>
+  </div>
+</div>
+
+<!-- الأجهزة -->
+<div id="devices" class="section"></div>
+
+<!-- الأسعار -->
+<div id="details" class="section"></div>
+
+<!-- الأدمن -->
+<div id="adminPanel">
+  <h2>لوحة التحكم</h2>
+  <input type="password" id="adminPass" placeholder="كلمة المرور">
+  <button onclick="checkAdmin()">دخول</button>
+
+  <div id="adminContent" style="display:none;">
+    <h3>تعديل السعر</h3>
+    <input type="text" id="newPrice" placeholder="السعر الجديد">
+    <button onclick="updatePrice()">تحديث</button>
+    <button onclick="closeAdmin()">إغلاق</button>
+  </div>
+</div>
+
+<script>
+let selectedTool = null;
+let selectedBrand = null;
+let selectedDevice = null;
+let adminUnlocked = false;
+let clickCount = 0;
+
+// قاعدة بيانات الأجهزة + الأسعار الأصلية
+let prices = {
+  samsung: {
+    A12: {screen: 55, battery: 20, board: 90, ic: 10},
+    A22: {screen: 60, battery: 22, board: 100, ic: 12},
+    A32: {screen: 70, battery: 25, board: 110, ic: 12},
+    A51: {screen: 95, battery: 30, board: 150, ic: 15},
+    A71: {screen: 110, battery: 35, board: 170, ic: 20},
+    S9: {screen: 130, battery: 40, board: 200, ic: 25},
+    S10: {screen: 150, battery: 45, board: 230, ic: 30},
+    S20: {screen: 180, battery: 50, board: 260, ic: 35}
+  },
+
+  apple: {
+    iPhone6: {screen: 35, battery: 15, board: 80, ic: 10},
+    iPhone7: {screen: 40, battery: 20, board: 100, ic: 15},
+    iPhone8: {screen: 45, battery: 25, board: 120, ic: 20},
+    X: {screen: 90, battery: 35, board: 200, ic: 40},
+    XR: {screen: 100, battery: 40, board: 220, ic: 45},
+    11: {screen: 120, battery: 45, board: 250, ic: 50},
+    12: {screen: 150, battery: 55, board: 300, ic: 60}
+  },
+
+  huawei: {
+    Y7: {screen: 40, battery: 20, board: 90, ic: 10},
+    Y9: {screen: 50, battery: 25, board: 110, ic: 12},
+    Nova3: {screen: 70, battery: 30, board: 150, ic: 15},
+    P30: {screen: 120, battery: 40, board: 200, ic: 25}
+  },
+
+  xiaomi: {
+    Redmi9: {screen: 45, battery: 20, board: 90, ic: 10},
+    Redmi10: {screen: 50, battery: 22, board: 100, ic: 12},
+    RedmiNote8: {screen: 55, battery: 25, board: 110, ic: 12},
+    RedmiNote10: {screen: 70, battery: 30, board: 130, ic: 15}
+  },
+
+  oppo: {
+    A3s: {screen: 40, battery: 20, board: 90, ic: 10},
+    A5: {screen: 50, battery: 22, board: 110, ic: 12},
+    A54: {screen: 70, battery: 28, board: 140, ic: 15}
+  },
+
+  vivo: {
+    Y12: {screen: 45, battery: 20, board: 90, ic: 10},
+    Y20: {screen: 55, battery: 25, board: 110, ic: 12},
+    V20: {screen: 120, battery: 40, board: 200, ic: 25}
+  },
+
+  realme: {
+    C11: {screen: 40, battery: 20, board: 90, ic: 10},
+    C25: {screen: 55, battery: 25, board: 110, ic: 12},
+    R7: {screen: 110, battery: 35, board: 180, ic: 20}
+  },
+
+  tecno: {
+    Spark6: {screen: 45, battery: 20, board: 90, ic: 10},
+    Spark8: {screen: 55, battery: 25, board: 110, ic: 12},
+    Camon17: {screen: 80, battery: 30, board: 140, ic: 15}
+  }
+};
+
+// عرض الأقسام
+function showSection(id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  if (id) document.getElementById(id).classList.add('active');
+}
+
+// اختيار الأداة
+function selectTool(tool) {
+  selectedTool = tool;
+  showSection('brands');
+}
+
+// اختيار الماركة
+function selectBrand(brand) {
+  selectedBrand = brand;
+  let deviceList = Object.keys(prices[brand]);
+
+  let html = "<h2>اختر الجهاز</h2><div class='grid'>";
+  deviceList.forEach(d => {
+    html += `<div class="device" onclick="selectDevice('${d}')">${d}</div>`;
+  });
+  html += "</div>";
+
+  document.getElementById("devices").innerHTML = html;
+  showSection("devices");
+}
+
+// اختيار الجهاز
+function selectDevice(device) {
+  selectedDevice = device;
+  let price = prices[selectedBrand][device][selectedTool];
+
+  document.getElementById("details").innerHTML = `
+    <h2>${selectedBrand.toUpperCase()} - ${device}</h2>
+    <p>السعر: ${price}$ (~${price * 14000} ل.س)</p>
+    <p>الجودة: أصلية ممتازة</p>
+  `;
+  showSection("details");
+}
+
+// فتح الأدمن بعد 10 ضغطات
+document.getElementById("siteTitle").addEventListener("click", function(){
+  clickCount++;
+  if(clickCount >= 10){
+    openAdmin();
+    clickCount = 0;
+  }
+});
+
+function openAdmin() {
+  showSection("");
+  document.getElementById("adminPanel").style.display = "block";
+}
+
+function checkAdmin() {
+  if (document.getElementById("adminPass").value === "homs2026") {
+    adminUnlocked = true;
+    document.getElementById("adminContent").style.display = "block";
+    alert("تم فتح لوحة الأدمن");
+  } else {
+    alert("خطأ في كلمة المرور");
+  }
+}
+
+function updatePrice() {
+  if (!adminUnlocked) return alert("سجّل دخول أولاً");
+
+  let newPrice = document.getElementById("newPrice").value;
+  if (selectedBrand && selectedDevice && selectedTool && newPrice) {
+    prices[selectedBrand][selectedDevice][selectedTool] = parseFloat(newPrice);
+    alert("تم تحديث السعر بنجاح");
+  } else {
+    alert("اختر ماركة + جهاز + أداة ثم أدخل السعر");
+  }
+}
+
+function closeAdmin() {
+  document.getElementById("adminPanel").style.display = "none";
+  adminUnlocked = false;
+}
+</script>
+
+</body>
+  </html>
